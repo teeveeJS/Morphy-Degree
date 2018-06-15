@@ -8,13 +8,16 @@
  * Author: Teemu
  *
  * Compilation: javac MorphyDegree.java
- * Execution: java MorphyDegree database.pgn
+ * Execution: java MorphyDegree database.pgn [database2.pgn database3.pgn ...]
  */
 
 import java.util.TreeMap;
+import java.util.Map;
+import java.util.Comparator;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.BufferedInputStream;
+import java.io.FileReader;
+import java.io.BufferedReader;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.regex.Pattern;
@@ -25,25 +28,52 @@ public class MorphyDegree {
   private final String MORPHY = "Morphy, Paul";
   private TreeMap<String, Integer> players;
   private Graph G;
+  private int totalGames;
 
   public MorphyDegree(String filename) {
-    players = new TreeMap<>();
+    players = new TreeMap<>(new Comparator<String>() {
+      public int compare(String s1, String s2) {
+        return s1.compareTo(s2);
+      }
+    });
     G = new Graph();
+    totalGames = 0;
 
+    readFile(filename);
+  }
+
+  public MorphyDegree(String[] files) {
+    // players = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    players = new TreeMap<>(new Comparator<String>() {
+      public int compare(String s1, String s2) {
+        return s1.compareTo(s2);
+      }
+    });
+    G = new Graph();
+    totalGames = 0;
+
+    for (int i = 0; i < files.length; i++) {
+      readFile(files[i]);
+    }
+  }
+
+  private void readFile(String filename) {
     try {
-      Scanner sc = new Scanner(new File(filename));
+      BufferedReader br = new BufferedReader(new FileReader(new File(filename)));
 
       Pattern playerWhite = Pattern.compile("\\[White \\\"(.*)\\\"\\]");
       Pattern playerBlack = Pattern.compile("\\[Black \\\"(.*)\\\"\\]");
 
-      while (sc.hasNextLine()) {
-        String line = sc.nextLine();
+      String line;
+      while ((line = br.readLine()) != null) {
         Matcher whiteMatcher = playerWhite.matcher(line);
         if (whiteMatcher.find()) {
+          totalGames++;
+
           String white = whiteMatcher.group(1);
 
           String black = "";
-          String line2 = sc.nextLine();
+          String line2 = br.readLine();
           Matcher blackMatcher = playerBlack.matcher(line2);
           if (blackMatcher.find()) {
               black = blackMatcher.group(1);
@@ -72,7 +102,7 @@ public class MorphyDegree {
           }
         }
       }
-      sc.close();
+      br.close();
     } catch (IOException ioe) {
       throw new IllegalArgumentException("Cannot open file: " + ioe);
     }
@@ -127,27 +157,57 @@ public class MorphyDegree {
     return dist[end];
   }
 
-  public void printPlayers() {
-    for (String name : players.descendingKeySet()) {
-      System.out.println(name + " : " + players.get(name));
+  private void queryPlayer(String player) {
+    if (players.containsKey(player)) {
+      int connections = 0;
+      for (int i : G.adj(players.get(player))) connections++;
+      System.out.println(connections + " connections found for " + player);
+    } else {
+      System.out.println("Player " + player + " not found");
     }
   }
 
+  public void printPlayers() {
+    for (Map.Entry<String, Integer> p : players.entrySet()) {
+      System.out.println(p.getValue() + ": " + p.getKey());
+    }
+    System.out.println(players.size() + " players found");
+  }
+
+  public int dbSize() {
+    return players.size();
+  }
+
+  public int games() {
+    return totalGames;
+  }
+
   public static void main(String[] args) {
-    MorphyDegree db = new MorphyDegree(args[0]);
+    String[] files = new String[args.length];
+    for (int i = 0; i < args.length; i++) {
+      files[i] = args[i];
+    }
+    MorphyDegree db = new MorphyDegree(files);
 
     // db.printPlayers();
+    // System.out.println(db.dbSize());
+    // System.out.println(db.games());
 
     Scanner in = new Scanner(System.in);
     while (true) {
       String player1 = in.nextLine();
       if (player1.equals("q")) break;
+      db.queryPlayer(player1);
+
       String player2 = in.nextLine();
+      db.queryPlayer(player2);
+
       try {
         System.out.println(db.getDegree(player1, player2));
       } catch (IllegalArgumentException iae) {
         System.out.println("Invalid player names " + iae);
       }
     }
+    in.close();
   }
 }
