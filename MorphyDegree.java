@@ -9,8 +9,6 @@
  *
  * Compilation: javac MorphyDegree.java
  * Execution: java MorphyDegree database.pgn [database2.pgn database3.pgn ...]
- *
- * TODO: filter out games against NN's
  */
 
 import java.util.TreeMap;
@@ -51,7 +49,6 @@ public class MorphyDegree {
   }
 
   public MorphyDegree(String[] files) {
-    // players = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     players = new TreeMap<>(new Comparator<String>() {
       public int compare(String s1, String s2) {
         return s1.compareTo(s2);
@@ -89,30 +86,30 @@ public class MorphyDegree {
               black = blackMatcher.group(1);
           }
 
-          // System.out.println("Found players: " + white + " and " + black);
-
-          int wVal;
-          int bVal;
-          if (!players.containsKey(white)) {
-            int id = players.size();
-            players.put(white, id);
-            ids.put(id, white);
-            wVal = id;
-            if (id == G.V() - 1) G.addVertex();
-          } else {
-            wVal = players.get(white);
-          }
-          if (!players.containsKey(black)) {
-            int id = players.size();
-            players.put(black, id);
-            ids.put(id, black);
-            bVal = id;
-            if (id == G.V() - 1) G.addVertex();
-          } else {
-            bVal = players.get(black);
-          }
-          if (!G.hasEdge(wVal, bVal)) {
-            G.addEdge(wVal, bVal);
+          if (!white.equals("NN") && !black.equals("NN")) {
+            int wVal;
+            int bVal;
+            if (!players.containsKey(white)) {
+              int id = players.size();
+              players.put(white, id);
+              ids.put(id, white);
+              wVal = id;
+              if (id == G.V() - 1) G.addVertex();
+            } else {
+              wVal = players.get(white);
+            }
+            if (!players.containsKey(black)) {
+              int id = players.size();
+              players.put(black, id);
+              ids.put(id, black);
+              bVal = id;
+              if (id == G.V() - 1) G.addVertex();
+            } else {
+              bVal = players.get(black);
+            }
+            if (!G.hasEdge(wVal, bVal)) {
+              G.addEdge(wVal, bVal);
+            }
           }
         }
       }
@@ -122,55 +119,12 @@ public class MorphyDegree {
     }
   }
 
-  private static void validatePlayer(String player, TreeMap<String, Integer> allPlayers) {
+  private void validatePlayer(String player) {
     if (player == null) {
       throw new IllegalArgumentException("Argument is null");
     }
-    if (!allPlayers.containsKey(player)) {
+    if (!players.containsKey(player)) {
       throw new IllegalArgumentException("No games by the given player " + player + " exist in the input file");
-    }
-  }
-
-  private class PlayerDegrees {
-    private String sourcePlayer;
-    private TreeMap<String, Integer> players;
-    private TreeMap<Integer, String> ids;
-    private int[] paths;
-    private int[] degrees;
-
-    public PlayerDegrees(String sourcePlayer,
-                          TreeMap<String, Integer> players,
-                          TreeMap<Integer, String> ids,
-                          int[] paths,
-                          int[] degrees)
-    {
-      this.sourcePlayer = sourcePlayer;
-      this.players = players;
-      this.ids = ids;
-      this.paths = paths;
-      this.degrees = degrees;
-    }
-
-    public Iterable<String> queryPath(String player) {
-      validatePlayer(player, this.players);
-
-      int goal = players.get(player);
-      int start = players.get(sourcePlayer);
-      if (paths[goal] == -1) return null;
-
-      Stack<String> playerSequence = new Stack<>();
-      playerSequence.push(player);
-      int pathNode = goal;
-      while (pathNode != start) {
-        pathNode = paths[pathNode];
-        playerSequence.push(ids.get(pathNode));
-      }
-      return playerSequence;
-    }
-
-    public int queryDegree(String player) {
-      validatePlayer(player, this.players);
-      return degrees[players.get(player)];
     }
   }
 
@@ -179,7 +133,7 @@ public class MorphyDegree {
    * Someone please come up with a better method name
    */
   public PlayerDegrees calculateAll(String player) {
-    validatePlayer(player, this.players);
+    validatePlayer(player);
 
     int start = players.get(player);
 
@@ -223,8 +177,8 @@ public class MorphyDegree {
    * Uses a Breadth-First Search Algorithm
    */
   public int getDegree(String player, String target) {
-    validatePlayer(player, this.players);
-    validatePlayer(target, this.players);
+    validatePlayer(player);
+    validatePlayer(target);
 
     int start = players.get(player);
     int end = players.get(target);
@@ -259,8 +213,8 @@ public class MorphyDegree {
   }
 
   public Iterable<String> getPlayerSequence(String player, String target) {
-    validatePlayer(player, this.players);
-    validatePlayer(target, this.players);
+    validatePlayer(player);
+    validatePlayer(target);
 
     int start = players.get(player);
     int end = players.get(target);
@@ -350,6 +304,7 @@ public class MorphyDegree {
         for (String s : seq) {
           System.out.print(s + " -> ");
         }
+        System.out.print("\n");
       } catch (IllegalArgumentException iae) {
         System.out.println("Invalid player names " + iae);
       }
